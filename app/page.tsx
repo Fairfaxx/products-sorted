@@ -1,65 +1,125 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import Image from 'next/image';
+
+type Product = {
+  id: number;
+  title: string;
+  price: number;
+  rating: number;
+  returnPolicy: string;
+  images: string[];
+};
+
+type ProductsResponse = {
+  products: Product[];
+};
+
+export default function App() {
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    async function getProducts(query: string, signal: AbortSignal) {
+      try {
+        setLoading(true);
+        setError(false);
+
+        const response = await axios.get<ProductsResponse>(
+          `https://dummyjson.com/products/search?q=${query}`,
+          { signal },
+        );
+
+        setProducts(response.data.products);
+      } catch (error) {
+        if (axios.isCancel(error)) {
+          console.log('Request cancelled');
+        } else {
+          setError(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (debouncedQuery) {
+      getProducts(debouncedQuery, signal);
+    }
+
+    return () => controller.abort();
+  }, [debouncedQuery]);
+
+  console.log(products);
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="w-100 flex flex-col items-center gap-4 p-4">
+      <h1>Product Search</h1>
+
+      <input
+        placeholder="Search products..."
+        value={query}
+        onChange={(e) => {
+          const value = e.target.value;
+          setQuery(value);
+
+          if (value.trim() === '') {
+            setProducts([]);
+            setError(false);
+            setLoading(false);
+          }
+        }}
+      />
+      {debouncedQuery && <h2>Your are searching for: {debouncedQuery}</h2>}
+
+      {!query && <p>Start typing to search products.</p>}
+
+      {loading && <p>Loading products...</p>}
+
+      {error && <p>Something went wrong. Please try again.</p>}
+
+      {!loading && !error && debouncedQuery && products.length === 0 && (
+        <p>No products found for &quot;{debouncedQuery}&quot;.</p>
+      )}
+      {!loading && !error && products.length > 0 && (
+        <ul>
+          {products.map((product) => (
+            <li
+              key={product.id}
+              className="border mb-2.5 p-1 flex flex-col items-center"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+              <div className="p-1 flex flex-col items-center">
+                <h2>{product.title}</h2>
+
+                <Image
+                  width={60}
+                  height={60}
+                  src={product.images[0]}
+                  alt={product.title}
+                />
+
+                <p>Price: ${product.price}</p>
+                <p>Rating: {product.rating}</p>
+                <p>Return Policy: {product.returnPolicy}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
