@@ -1,21 +1,10 @@
 'use client';
 
 import axios from 'axios';
-import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import { ChangeEvent, useEffect, useState } from 'react';
 
-type Product = {
-  id: number;
-  title: string;
-  price: number;
-  rating: number;
-  returnPolicy: string;
-  images: string[];
-};
-
-type ProductsResponse = {
-  products: Product[];
-};
+import ProductList from './components/ProductCard';
+import { Product, SortByOption, ProductsResponse } from './types';
 
 export default function App() {
   const [query, setQuery] = useState('');
@@ -23,6 +12,11 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sortBy, setSortBy] = useState<SortByOption>('Default');
+
+  const handleSortChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    setSortBy(event.target.value as SortByOption);
+  };
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -65,7 +59,16 @@ export default function App() {
     return () => controller.abort();
   }, [debouncedQuery]);
 
-  console.log(products);
+  const sortedProducts = [...products];
+
+  if (sortBy === 'Price Low to High') {
+    sortedProducts.sort((a, b) => a.price - b.price);
+  } else if (sortBy === 'Price High to Low') {
+    sortedProducts.sort((a, b) => b.price - a.price);
+  } else if (sortBy === 'Rating') {
+    sortedProducts.sort((a, b) => b.rating - a.rating);
+  }
+
   return (
     <div className="w-100 flex flex-col items-center gap-4 p-4">
       <h1>Product Search</h1>
@@ -95,30 +98,22 @@ export default function App() {
       {!loading && !error && debouncedQuery && products.length === 0 && (
         <p>No products found for &quot;{debouncedQuery}&quot;.</p>
       )}
+
+      <>
+        <label>
+          Sort by:
+          <select value={sortBy} onChange={handleSortChange}>
+            <option value="Default">Default</option>
+            <option value="Price Low to High">Price Low to High</option>
+            <option value="Price High to Low">Price High to Low</option>
+            <option value="Rating">Rating</option>
+          </select>
+        </label>
+        <hr />
+      </>
+
       {!loading && !error && products.length > 0 && (
-        <ul>
-          {products.map((product) => (
-            <li
-              key={product.id}
-              className="border mb-2.5 p-1 flex flex-col items-center"
-            >
-              <div className="p-1 flex flex-col items-center">
-                <h2>{product.title}</h2>
-
-                <Image
-                  width={60}
-                  height={60}
-                  src={product.images[0]}
-                  alt={product.title}
-                />
-
-                <p>Price: ${product.price}</p>
-                <p>Rating: {product.rating}</p>
-                <p>Return Policy: {product.returnPolicy}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <ProductList products={sortedProducts} />
       )}
     </div>
   );
