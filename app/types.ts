@@ -1,5 +1,9 @@
 export type ProductListProps = {
   products: Product[];
+  selectedIndex: number;
+  showModal: boolean;
+  selectedItem: Product | null;
+  setShowModal: (value: boolean) => void;
 };
 
 export type Product = {
@@ -9,6 +13,7 @@ export type Product = {
   rating: number;
   returnPolicy: string;
   images: string[];
+  selectedItem: React.ReactNode;
 };
 
 export type ProductsResponse = {
@@ -20,3 +25,5 @@ export type SortByOption =
   | 'Price Low to High'
   | 'Price High to Low'
   | 'Rating';
+
+export type MinRatingOption = 'All' | '3' | '4' | '4.5';
